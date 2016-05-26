@@ -1,0 +1,74 @@
+<?php
+// $Id: og_gradebook.install,v 1.1.6.1 2009/01/24 03:49:04 mgn Exp $
+
+/**
+ * @file
+ * og_gradebook.install: Install schema for og_gradebook
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function og_gradebook_schema() {
+  return array();
+}
+
+/**
+ * Implementation of hook_install().
+ */
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function og_gradebook_install() {
+  // Create tables.
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_install_schema('og_gradebook')
+
+  // set og_gradebook weight
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query("UPDATE {system} SET weight = %d WHERE name = '%s'", 2, 'og_gradebook') */
+  db_update('system')
+  ->fields(array(
+    'weight' => 2,
+  ))
+  ->condition('name', 'og_gradebook')
+  ->execute();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function og_gradebook_uninstall() {
+  // Remove group gradebooks
+  og_gradebook_apply_to_all('delete');
+
+  // Remove tables.
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_uninstall_schema('og_gradebook')
+
+  // Delete all variables.
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query("DELETE FROM {variable} WHERE name LIKE 'og_gradebook_%%'") */
+  db_delete('variable')
+  ->condition('name', 'og_gradebook_%%', 'LIKE')
+  ->execute();
+}
+
+/**
+ * no more tables needed
+ */
+function og_gradebook_update_6001() {
+  $ret = array();
+  db_drop_table('og_gradebook');
+  // hook_update_N() no longer returns a $ret array. Instead, return
+  // nothing or a translated string indicating the update ran successfully.
+  // See http://drupal.org/node/224333#update_sql.
+  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
+}

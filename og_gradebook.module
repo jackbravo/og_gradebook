@@ -1,0 +1,66 @@
+<?php
+// $Id: og_gradebook.module,v 1.4.4.2.2.1 2009/04/02 04:48:59 mgn Exp $
+/**
+ * @file
+ * Provides a simple gradebook for each organic group
+ */
+
+/**
+ * Implements hook_help().
+ */
+function og_gradebook_help($path, $arg) {
+  switch ($path) {
+    case 'admin/modules#description':
+      return t('Provides a gradebook for each organic group. The group administrators are given teacher roles and all other members of the group are given student roles.');
+    case 'admin/help#og_gradebook':
+      $output = '<p>' . t('The og_gradebook module provides a gradebook for each organic group. Group administrators are given teacher roles and members of the group are given student roles. You can retroactively add gradebooks to already established groups through the <a href="@og-admin">og_gradebook  admin settings page</a>.', array('@og-admin' => url('admin/config/og_gradebook'))) . '</p>';
+      $output .= '<p>' . t('Group gradebooks are accessed via the url <em>og_gradebook/gid</em>, where gid is the gradebook id, or through the link provided on the organic group detail block.') . '<p>';
+      $output .= '<p>' . t('For more information, see the <a href="@gradebook_help">Gradebook help pages.</a>', array('@gradebook_help' => url('admin/help/gradebook'))) . '</p>';
+      return $output;
+    case 'admin/config/og_gradebook':
+      $output = '<p>' . t('Administration options for the organic group gradebooks. If this og_gradebooks was enabled after groups were established, you can retroactively add gradebooks to these groups by pressing the button below. Otherwise, you must visit each group node page to create the gradebook for these groups. New groups will be created with a gradebook.') . '</p>';
+      $output .= '<p>' . t('Group administrators are automatically assigned a teacher role, and all other members are automatically assigned student roles.') . '<p>';
+      $output .= '<p>' . t('Assignment types are configured site-wide at the <a href="@gradebookapi">Gradebook API configuration page</a>.', array('@gradebookapi' => url('admin/gradebook/gradebookapi'))) . '</p>';
+      return $output;
+    case 'og_gradebook/%':
+      $gradebook = gradebookapi_gradebook_load($arg[1]);
+      $output = '';
+      if (isset($gradebook)) {
+        $output = '<p>' . t('<strong>%gradebook_name:</strong> This gradebook can be sorted by clicking on any of the links in the first column. Click on the grade for an assignment', array('%gradebook_name' => $gradebook->name));
+        $output .= gradebookapi_is_teacher($gradebook) ? t(' to assign, edit or view the ') : t('to view your');
+        $output .= t('grade. Click on the title of an assignment to read the assignment.') . '</p>';
+      }
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_gradebookapi_students().
+ *
+ * @param $gradebook
+ *   The gradebook object
+ * @return array
+ *   An array with keys 'uid', containing a list of student ids and 'name', containing a list of student names
+ *   This was changed for gradebookapi 6.x.2.x
+ */
+function og_gradebook_gradebookapi_students($gradebook, $students = array('uid' => array(), 'name' => array())) {
+  $group_id = $gradebook->nid;
+  $manager_uid = db_query("SELECT uid FROM node WHERE nid = $group_id LIMIT 1")->fetchField();
+  $result = db_query("
+    SELECT u.uid, u.name, last_name.field_last_name_value AS last_name, first_name.field_first_name_value AS first_name
+    FROM {og_membership} ou
+      INNER JOIN {users} u ON ou.etid = u.uid AND ou.entity_type = 'user'
+      INNER JOIN node ON u.uid = node.uid AND node.type = 'profile'
+      LEFT JOIN field_data_field_last_name last_name ON node.nid = last_name.entity_id
+      LEFT JOIN field_data_field_first_name first_name ON node.nid = first_name.entity_id
+    WHERE ou.gid = :nid AND ou.state = 1 AND ou.etid != :manager_uid
+    ORDER BY last_name, first_name", array(':nid' => $group_id, ':manager_uid' => $manager_uid));
+  foreach ($result as $user) {
+    $students['uid'][$user->uid] = $user->uid;
+    $students['name'][$user->uid] = $user->name;
+    $students['last_name'][$user->uid] = $user->last_name;
+    $students['first_name'][$user->uid] = $user->first_name;
+  }
+  return $students;
+}
+
